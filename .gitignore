@@ -1,0 +1,15 @@
+# variáveis de ambiente secretas
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# dependências
+node_modules
+
+# builds
+dist
+build
+
+# logs
+*.log
