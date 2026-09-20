@@ -1,3 +1,19 @@
+## Download e Execução do Projeto
+
+Siga as instruções abaixo para clonar o repositório e inicializar a infraestrutura em contêineres na sua máquina.
+
+### Pré-requisitos
+
+* **Git**
+* **Docker Engine** (v20.10+) e **Docker Compose** (v2.0+)
+
+### 1. Clonar o Repositório
+
+Abra o terminal e faça o clone do projeto:
+
+```bash
+git clone git@github.com:Eduardbo/fullstack-container.git
+cd fullstack-container
 # Full-Stack Containerized Authentication Architecture
 
 Projeto de arquitetura full-stack desacoplada em contêineres, orquestrada via Docker Compose. O sistema implementa um painel de autenticação com separação clara de responsabilidades entre camada de apresentação, serviços de API, persistência relacional e roteamento de tráfego.
