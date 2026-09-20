@@ -1,38 +1,135 @@
-# Full-Stack Containerized Authentication Architecture
+# Full-Stack Containerized Authentication
 
-Projeto de arquitetura full-stack desacoplada em contêineres, orquestrada via Docker Compose. O sistema implementa um painel de autenticação com separação clara de responsabilidades entre camada de apresentação, serviços de API, persistência relacional e roteamento de tráfego.
+Aplicação full-stack de autenticação desenvolvida com **React, NestJS e MariaDB**, totalmente containerizada com **Docker Compose**.
 
-## Visão Geral da Arquitetura
+A arquitetura separa frontend, API, banco de dados e proxy reverso, mantendo os serviços isolados e permitindo que o acesso externo seja feito por uma única porta.
 
-A estrutura foi desenhada no modelo de microsserviços/serviços isolados. O acesso externo é centralizado em uma única porta pública, utilizando um proxy reverso para distribuição do tráfego interno e abstração da topologia da rede.
-
-O ecossistema é dividido em 4 serviços principais:
-
-* **proxy (Nginx):** Atua como o ponto de entrada único do sistema (porta 80). Responsável pelo roteamento de tráfego entre a interface web e as chamadas de API, ocultando as portas internas dos contêineres da rede externa.
-* **web (React / Vite):** Servidor de desenvolvimento para a interface do usuário rodando em Node.js. As chamadas do cliente são direcionadas para caminhos relativos (`/api/`), permitindo que o proxy gerencie a comunicação sem expor o backend diretamente ao navegador.
-* **api (NestJS):** Aplicação backend construída com NestJS, responsável pelas regras de negócio, validação de requisições, emissão/validação de tokens JWT e manipulação dos dados.
-* **db (MariaDB):** Instância de banco de dados relacional isolada na rede interna do Docker. Utiliza volumes para persistência dos dados e scripts de inicialização automatizada para criação do schema inicial.
+## Arquitetura
 
 ```text
-               +-----------------------------------+
-               |          Cliente (Browser)        |
-               +-----------------------------------+
-                                 |
-                                 | HTTP (Porta 80)
-                                 v
-               +-----------------------------------+
-               |           proxy (Nginx)           |
-               +-----------------------------------+
-                 /                               \
-  /api/* (Porta 3000)                             /* (Porta 5173)
-               /                                   \
-              v                                     v
-+---------------------------+         +---------------------------+
-|        api (NestJS)       |         |     web (React / Vite)    |
-+---------------------------+         +---------------------------+
-              |
-              | TCP (Porta 3306)
-              v
-+---------------------------+
-|        db (MariaDB)       |
-+---------------------------+
+Browser
+   │
+   │ HTTP :80
+   ▼
+ Nginx
+ ├── /      → React/Vite :5173
+ └── /api/  → NestJS :3000
+                  │
+                  │ TCP :3306
+                  ▼
+               MariaDB
+```
+
+### Serviços
+
+| Serviço | Tecnologia   | Função                           |
+| ------- | ------------ | -------------------------------- |
+| `proxy` | Nginx        | Entrada única e roteamento       |
+| `web`   | React + Vite | Interface da aplicação           |
+| `api`   | NestJS       | Autenticação e regras de negócio |
+| `db`    | MariaDB      | Persistência dos dados           |
+
+A comunicação entre os containers utiliza a rede interna do Docker Compose. A API acessa o banco pelo nome do serviço:
+
+```env
+DB_HOST=db
+```
+
+## Autenticação
+
+O fluxo de login ocorre da seguinte forma:
+
+1. O frontend envia a requisição para `/api/`.
+2. O Nginx encaminha a requisição para a API.
+3. O NestJS valida os dados recebidos.
+4. A API consulta o MariaDB.
+5. A senha é comparada utilizando `bcrypt`.
+6. Um token JWT é gerado após a autenticação.
+7. O token é armazenado em cookie `httpOnly`.
+
+Isso mantém o backend e o banco fora da exposição direta ao navegador.
+
+## Estrutura
+
+```text
+.
+├── docker-compose.yml
+├── proxy/
+│   └── nginx.conf
+├── web/
+└── painel-login-api/
+```
+
+## Requisitos
+
+* Git
+* Docker Engine 20.10+
+* Docker Compose 2.0+
+
+## Instalação
+
+Clone o projeto:
+
+```bash
+git clone git@github.com:Eduardbo/fullstack-container.git
+cd fullstack-container
+```
+
+Configure as variáveis da API:
+
+```bash
+cp painel-login-api/.env.example painel-login-api/.env
+```
+
+Inicie todo o ambiente:
+
+```bash
+docker compose up -d --build
+```
+
+Após a inicialização, acesse:
+
+```text
+http://localhost
+```
+
+## Comandos úteis
+
+Verificar os containers:
+
+```bash
+docker compose ps
+```
+
+Visualizar logs:
+
+```bash
+docker compose logs -f
+```
+
+Parar os serviços:
+
+```bash
+docker compose down
+```
+
+Parar os serviços e remover os volumes:
+
+```bash
+docker compose down -v
+```
+
+> `down -v` remove os volumes persistentes e pode apagar os dados do banco.
+
+## Segurança
+
+* **Isolamento:** MariaDB é acessado apenas pela rede interna do Docker.
+* **JWT:** utilizado para autenticação.
+* **Cookies:** configurados com `httpOnly` e `sameSite: lax`.
+* **Senhas:** armazenadas como hash utilizando `bcrypt`.
+* **Validação:** requisições tratadas pelo `ValidationPipe` do NestJS.
+* **Proxy reverso:** apenas o Nginx expõe a porta `80` externamente.
+
+## Tecnologias
+
+**Docker · Docker Compose · Nginx · React · Vite · Node.js · NestJS · MariaDB · Knex · JWT · bcrypt**
